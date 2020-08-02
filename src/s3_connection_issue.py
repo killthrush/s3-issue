@@ -13,10 +13,10 @@ from src.library.s3_signing import S3LinkSigner
 initialize_logging()
 
 
-BUCKET_NAME = "devbenpeterson-document-store-530561302918"
+BUCKET_NAME = "aws-llambda"
 CONCURRENT_USERS = 5
-LINK_TIMEOUT_VALUE = 10
-WORKING_DIRECTORY = "/Users/ben.peterson/testfiles/40mb"
+LINK_TIMEOUT_VALUE = 100
+WORKING_DIRECTORY = "/tmp"
 SOURCE_FILE = f"{WORKING_DIRECTORY}/00"
 
 
