@@ -6,16 +6,18 @@ from locust import HttpUser, constant, task
 from locust.clients import HttpSession
 from locust.event import EventHook
 
-from src.aws_session import AwsSession
-from src.logging import initialize_logging, get_logger
-from src.s3_signing import S3LinkSigner
+from src.library.aws_session import AwsSession
+from src.library.logging import initialize_logging, get_logger
+from src.library.s3_signing import S3LinkSigner
 
 initialize_logging()
 
 
 BUCKET_NAME = "devbenpeterson-document-store-530561302918"
 CONCURRENT_USERS = 5
-SOURCE_FILE = "/Users/ben.peterson/testfiles/40mb/00"
+LINK_TIMEOUT_VALUE = 10
+WORKING_DIRECTORY = "/Users/ben.peterson/testfiles/40mb"
+SOURCE_FILE = f"{WORKING_DIRECTORY}/00"
 
 
 class DocStorageUser(HttpUser):
@@ -36,7 +38,7 @@ class DocStorageUser(HttpUser):
         self.client = HttpSession(base_url=self.host, request_success=success, request_failure=failed)
         self.client.keep_alive = True
 
-        aws_session = AwsSession.create(profile="dev_us-east-1")
+        aws_session = AwsSession.create()
         self.link_signer = S3LinkSigner.create(aws_session=aws_session)
 
     def success(self, **kwargs):
@@ -58,7 +60,7 @@ class DocStorageUser(HttpUser):
     def start_upload(self):
         self.file_id = uuid4()
         self.logger = get_logger(log_context={"file_id": self.file_id})
-        shutil.copy(SOURCE_FILE, f"/Users/ben.peterson/testfiles/40mb/auto_{self.file_id}")
+        shutil.copy(SOURCE_FILE, f"{WORKING_DIRECTORY}/{self.file_id}")
 
         object_name = f"testdocs/{self.file_id}"
         content_type = "application/octet-stream"
@@ -66,9 +68,8 @@ class DocStorageUser(HttpUser):
         link = self.link_signer.generate_presigned_put(bucket_name=BUCKET_NAME,
                                                        object_name=object_name,
                                                        content_type=content_type,
-                                                       timeout_in_seconds=10)
-        with open(f"/Users/ben.peterson/testfiles/40mb/auto_{self.file_id}", "rb") as f:
-        #with open(f"/Users/ben.peterson/Downloads/1", "rb") as f:
+                                                       timeout_in_seconds=LINK_TIMEOUT_VALUE)
+        with open(f"{WORKING_DIRECTORY}/{self.file_id}", "rb") as f:
             end = time()
             self.logger.info(f"Uploading file, link age is {end - start} seconds")
             upload_response = self.client.put(link, data=f, headers={"Content-Type": content_type}, timeout=3000)

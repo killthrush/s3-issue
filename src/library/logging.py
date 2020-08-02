@@ -4,6 +4,7 @@ Based heavily on the structlog library.
 """
 
 import inspect
+import logging
 import os
 
 import structlog
