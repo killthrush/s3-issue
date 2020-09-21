@@ -31,7 +31,16 @@ def initialize_logging():
     root_logger.propagate = True
 
     # We support logging third party libraries as well; alter these log levels if needed.
-    for logger_name in ["boto3", "botocore", "asyncio"]:
+    for logger_name in [
+        "boto3",
+        "botocore",
+        "asyncio",
+        "urllib",
+        "urllib3.connectionpool",
+        "s3transfer.utils",
+        "s3transfer.tasks",
+        "s3transfer.futures",
+    ]:
         third_party_logger = logging.getLogger(logger_name)
         for h in third_party_logger.handlers:
             third_party_logger.removeHandler(h)

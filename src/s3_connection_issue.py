@@ -15,9 +15,9 @@ initialize_logging()
 
 BUCKET_NAME = "aws-llambda"
 CONCURRENT_USERS = 5
-LINK_TIMEOUT_VALUE = 100
+LINK_TIMEOUT_VALUE = 10
 WORKING_DIRECTORY = "/tmp"
-SOURCE_FILE = f"{WORKING_DIRECTORY}/00"
+SOURCE_FILE = f"00"
 
 
 class DocStorageUser(HttpUser):
@@ -38,7 +38,10 @@ class DocStorageUser(HttpUser):
         self.client = HttpSession(base_url=self.host, request_success=success, request_failure=failed)
         self.client.keep_alive = True
 
-        aws_session = AwsSession.create()
+        if self.environment.aws_profile:
+            aws_session = AwsSession.create(profile=self.environment.aws_profile)
+        else:
+            aws_session = AwsSession.create()
         self.link_signer = S3LinkSigner.create(aws_session=aws_session)
 
     def success(self, **kwargs):
@@ -58,9 +61,9 @@ class DocStorageUser(HttpUser):
 
     @task()
     def start_upload(self):
-        self.file_id = uuid4()
+        #self.file_id = uuid4()
         self.logger = get_logger(log_context={"file_id": self.file_id})
-        shutil.copy(SOURCE_FILE, f"{WORKING_DIRECTORY}/{self.file_id}")
+        #shutil.copy(self.environment.source_file, f"{self.environment.working_directory}/{self.file_id}")
 
         object_name = f"testdocs/{self.file_id}"
         content_type = "application/octet-stream"
@@ -69,24 +72,23 @@ class DocStorageUser(HttpUser):
                                                        object_name=object_name,
                                                        content_type=content_type,
                                                        timeout_in_seconds=LINK_TIMEOUT_VALUE)
-        with open(f"{WORKING_DIRECTORY}/{self.file_id}", "rb") as f:
+        with open(f"{self.environment.working_directory}/{self.environment.source_file}", "rb") as f:
             end = time()
             self.logger.info(f"Uploading file, link age is {end - start} seconds")
             upload_response = self.client.put(link, data=f, headers={"Content-Type": content_type}, timeout=3000)
             pass
 
 
-def run_locust(test_file=None):
+def run_locust(test_file=None, directory=None, profile=None):
     from locust.env import Environment
     from locust.stats import stats_printer
     import gevent
-    global SOURCE_FILE
-
-    if test_file:
-        SOURCE_FILE = test_file
 
     env = Environment(user_classes=[DocStorageUser])
     env.create_local_runner()
+    setattr(env, "source_file", test_file or SOURCE_FILE)
+    setattr(env, "working_directory", directory or WORKING_DIRECTORY)
+    setattr(env, "aws_profile", profile)
     env.runner.start(CONCURRENT_USERS, hatch_rate=1)
     env.runner.greenlet.join()
 
@@ -101,4 +103,4 @@ def run_locust(test_file=None):
 
 
 if __name__ == "__main__":
-    run_locust()
+    run_locust(profile="dev_us-east-1")
