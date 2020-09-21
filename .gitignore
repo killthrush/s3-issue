@@ -129,9 +129,8 @@ dmypy.json
 .idea
 
 # Builds/deploys
-.lambda_package
+.test_package
 .terraform
 *.tfvars
 tf.out
-lambda_handler.zip
-clamav_layer.zip
+*.zip

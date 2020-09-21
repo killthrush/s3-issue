@@ -76,10 +76,15 @@ class DocStorageUser(HttpUser):
             pass
 
 
-if __name__ == "__main__":
+def run_locust(test_file=None):
     from locust.env import Environment
     from locust.stats import stats_printer
     import gevent
+    global SOURCE_FILE
+
+    if test_file:
+        SOURCE_FILE = test_file
+
     env = Environment(user_classes=[DocStorageUser])
     env.create_local_runner()
     env.runner.start(CONCURRENT_USERS, hatch_rate=1)
@@ -93,3 +98,7 @@ if __name__ == "__main__":
 
     # wait for the greenlets
     env.runner.greenlet.join()
+
+
+if __name__ == "__main__":
+    run_locust()
